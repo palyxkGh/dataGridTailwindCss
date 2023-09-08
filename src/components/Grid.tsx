@@ -1,37 +1,100 @@
 import 'react-data-grid/lib/styles.css';
-import DataGrid from 'react-data-grid';
-import {useEffect, useState} from 'react';
-const customersData = require('../data/customers.json');
+import DataGrid, {Column, SortColumn} from 'react-data-grid';
+import {useCallback, useEffect, useState} from 'react';
 
-interface IRow {
-    id: number;
-    name: string;
+interface Row {
+    readonly id: number;
+    readonly task: string;
+    readonly complete: number;
+    readonly priority: string;
+    readonly issueType: string;
 }
 
 
 const Grid = () => {
-    const [rows, setRows] = useState<any>([])
-    const [cols, setCols] = useState<any>([])
+    function createRows(): Row[] {
+        const rows: Row[] = [];
 
-    useEffect(() => {
-        const colData = [];
-
-        for (const label in customersData[1]) {
-            colData.push({key: label , name: label});
+        for (let i = 1; i < 50; i++) {
+            rows.push({
+                id: i,
+                task: `Task ${i}`,
+                complete: Math.min(100, Math.round(Math.random() * 110)),
+                priority: ['Critical', 'High', 'Medium', 'Low'][Math.round(Math.random() * 3)],
+                issueType: ['Bug', 'Improvement', 'Epic', 'Story'][Math.round(Math.random() * 3)]
+            });
         }
-        setCols(colData);
-        setRows(customersData);
-    }, []);
 
+        return rows;
+    }
+    function createColumns(): Column<Row>[] {
+        return [
+            {
+                key: 'id',
+                name: 'ID',
+                width: 80
+            },
+            {
+                key: 'task',
+                name: 'Title',
+                resizable: true,
+                sortable: true
+            },
+            {
+                key: 'priority',
+                name: 'Priority',
+                resizable: true,
+                sortable: true
+            },
+            {
+                key: 'issueType',
+                name: 'Issue Type',
+                resizable: true,
+                sortable: true
+            },
+            {
+                key: 'complete',
+                name: '% Complete',
+                resizable: true,
+                sortable: true
+            }
+        ];
+    }
+
+    const [rows, setRows] = useState(createRows);
+    const [columns, setColumns] = useState(createColumns);
+    const [sortColumns, setSortColumns] = useState<readonly SortColumn[]>([]);
+
+    const onSortColumnsChange = useCallback((sortColumnsParam: SortColumn[]) => {
+        setSortColumns(sortColumnsParam.slice(-1));
+    },[]);
 
     useEffect(() => {
-    }, [rows]);
-
-    const rowGetter = (row: IRow) => row.id;
+        console.log("=>(Grid.tsx:75) sortColumns", sortColumns);
+        console.log("=>(Grid.tsx:76) columns", columns);
+        if(sortColumns.length === 0) return;
+        else {
+            const { columnKey, direction } = sortColumns[0];
+            let sortedRows: Row[] = [...rows];
+            switch (columnKey) {
+                case 'task':
+                case 'priority':
+                case 'issueType':
+                    sortedRows = sortedRows.sort((a, b) => a[columnKey].localeCompare(b[columnKey]));
+                    break;
+                case 'complete':
+                    sortedRows = sortedRows.sort((a, b) => a[columnKey] - b[columnKey]);
+                    break;
+                default:
+            }
+            sortedRows = direction === 'DESC' ? sortedRows.reverse() : sortedRows;
+            setRows(sortedRows);
+        }
+    }, [sortColumns]);
 
     return (
     <div>
-        <DataGrid columns={cols} rows={rows} className="rdg-dark" rowKeyGetter={rowGetter}/>
+        <DataGrid columns={columns} rows={rows} className="rdg-dark" sortColumns={sortColumns} onSortColumnsChange={onSortColumnsChange}/>
     </div>
         )
 };
